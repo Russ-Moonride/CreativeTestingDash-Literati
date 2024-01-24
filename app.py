@@ -14,13 +14,13 @@ import requests
 import json
 from google.cloud import storage
 
-st.set_page_config(page_title="Ello Creative Ad Testing Dash",page_icon="🧑‍🚀",layout="wide")
+st.set_page_config(page_title="Literati Creative Ad Testing Dash",page_icon="🧑‍🚀",layout="wide")
 
 credentials = service_account.Credentials.from_service_account_info(
           st.secrets["gcp_service_account"]
       )
 client = bigquery.Client(credentials=credentials)
-bucket_name = "creativetesting_images_ello"
+bucket_name = "creativetesting_images_literati"
 
 
 def initialize_storage_client():
@@ -40,7 +40,7 @@ def password_protection():
       
   if not st.session_state.authenticated:
       password = st.text_input("Enter Password:", type="password")
-      correct_hashed_password = "Ello1234"
+      correct_hashed_password = "Literati1234"
       
       if st.button("Login"):
           if password == correct_hashed_password:
@@ -97,14 +97,14 @@ def get_campaign_value(ad_set, creative_storage_data):
 def update_ad_set_table(new_ad_set_name, campaign_name=None):
     # Query to find the current Ad-Set and Campaign
     query = """
-    SELECT Ad_Set, Campaign FROM `ello-407319.ello_streamlit.CreativeTestingStorage` WHERE Type = 'Current'
+    SELECT Ad_Set, Campaign FROM `literati-412221.literati_streamlit.CreativeTestingStorage` WHERE Type = 'Current'
     """
     current_ad_set_campaign = pandas.read_gbq(query, credentials=credentials)
 
     # If current Ad-Set exists, update it to 'Past'
     if not current_ad_set_campaign.empty:
         update_query = """
-        UPDATE `ello-407319.ello_streamlit.CreativeTestingStorage`
+        UPDATE `literati-412221.literati_streamlit.CreativeTestingStorage`
         SET Type = 'Past'
         WHERE Ad_Set = @current_ad_set 
         """
@@ -118,7 +118,7 @@ def update_ad_set_table(new_ad_set_name, campaign_name=None):
 
     # Insert the new Ad-Set with Type 'Current'
     insert_query = """
-    INSERT INTO `ello-407319.ello_streamlit.CreativeTestingStorage` (Ad_Set, Campaign, Type) VALUES (@new_ad_set, @campaign, 'Current')
+    INSERT INTO `literati-412221.literati_streamlit.CreativeTestingStorage` (Ad_Set, Campaign, Type) VALUES (@new_ad_set, @campaign, 'Current')
     """
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
@@ -159,7 +159,7 @@ def delete_ad_set(ad_set_value_to_delete, full_data):
         # SQL statement for deletion
         if ad_set_value_to_delete in full_data['Ad_Set_Name__Facebook_Ads'].values:
                   delete_query = """
-                  DELETE FROM `-375201._streamlit.CreativeTestingStorage`
+                  DELETE FROM `literati-412221.literati_streamlit.CreativeTestingStorage`
                   WHERE Ad_Set = @ad_set_value
                   AND Type = 'Past'
                   """
@@ -184,10 +184,10 @@ def process_ad_set_data(data, ad_set, past_test_data):
       'Campaign_Name__Facebook_Ads': 'Campaign',
       'Ad_Set_Name__Facebook_Ads': 'Ad_Set',
       'Ad_Name__Facebook_Ads' : 'Ad_Name',
-      'Impressions__Facebook_Ads' : 'Impressions',
-      'Link_Clicks__Facebook_Ads' : 'Clicks',
-      'Amount_Spent__Facebook_Ads' : 'Cost',
-      'Purchases___Facebook_Ads' : 'Purchases'
+      'Impressions' : 'Impressions',
+      'Clicks' : 'Clicks',
+      'Cost' : 'Cost',
+      'Conversions_3' : 'Purchases'
     })
 
     campaign_value = get_campaign_value(ad_set, past_test_data)
@@ -333,7 +333,7 @@ def display_images(images, captions):
 
 
 def main_dashboard():
-  st.markdown("<h1 style='text-align: center;'>Ello Creative Ad Testing</h1>", unsafe_allow_html=True)
+  st.markdown("<h1 style='text-align: center;'>Literati Creative Ad Testing</h1>", unsafe_allow_html=True)
   st.markdown("<h2 style='text-align: center;'>Current Test</h2>", unsafe_allow_html=True)
   # Calculate the date one year ago from today
   one_year_ago = (datetime.now() - timedelta(days=365)).date()
@@ -345,7 +345,7 @@ def main_dashboard():
       client = bigquery.Client(credentials=credentials)
       # Modify the query
       query = f"""
-      SELECT * FROM `ello-407319.ello_Segments.ello_ad_level` 
+      SELECT * FROM `literati-412221.literati_segments.literati_facebook_ad_level` 
       WHERE Date BETWEEN '{one_year_ago}' AND CURRENT_DATE() """
       st.session_state.full_data = pandas.read_gbq(query, credentials=credentials)
 
@@ -358,7 +358,7 @@ def main_dashboard():
       client = bigquery.Client(credentials=credentials)
       # Modify the query
       query = f"""
-      SELECT * FROM `ello-407319.ello_streamlit.CreativeTestingStorage` 
+      SELECT * FROM `literati-412221.literati_streamlit.CreativeTestingStorage` 
       WHERE Type = 'Current'"""
       st.session_state.current_test_data = pandas.read_gbq(query, credentials=credentials)
 
@@ -371,7 +371,7 @@ def main_dashboard():
       client = bigquery.Client(credentials=credentials)
       # Modify the query
       query = f"""
-      SELECT * FROM `ello-407319.ello_streamlit.CreativeTestingStorage` 
+      SELECT * FROM `literati-412221.literati_streamlit.CreativeTestingStorage` 
       WHERE Type = 'Past'"""
       st.session_state.past_test_data = pandas.read_gbq(query, credentials=credentials)
 
@@ -384,10 +384,10 @@ def main_dashboard():
       'Campaign_Name__Facebook_Ads': 'Campaign',
       'Ad_Set_Name__Facebook_Ads': 'Ad_Set',
       'Ad_Name__Facebook_Ads' : 'Ad_Name',
-      'Impressions__Facebook_Ads' : 'Impressions',
-      'Link_Clicks__Facebook_Ads' : 'Clicks',
-      'Amount_Spent__Facebook_Ads' : 'Cost',
-      'Purchases__Facebook_Ads' : 'Purchases'
+      'Impressions' : 'Impressions',
+      'Clicks' : 'Clicks',
+      'Cost' : 'Cost',
+      'Conversions_3' : 'Purchases'
   })
 
 
