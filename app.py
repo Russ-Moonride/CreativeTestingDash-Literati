@@ -427,7 +427,7 @@ def main_dashboard():
                   update_ad_set_if_exists(new_ad_set_name, uploaded_images, st.session_state.full_data, bucket_name, campaign_name)
 
   if current_test_data.empty:
-            st.markdown("<h2 style='text-align: center;'>No Current Tests to Display</h2>", unsafe_allow_html=True)
+            st.markdown("<h4 style='text-align: center;'>No Current Tests to Display</h4>", unsafe_allow_html=True)
   else:   
             current_Ad_Set = current_test_data['Ad_Set'].iloc[0]
           
@@ -548,10 +548,10 @@ def main_dashboard():
             
             display_images(final_adnames, final_adnames)        
                     
-            st.markdown("<h2 style='text-align: center;'>Past Tests</h2>", unsafe_allow_html=True)
+  st.markdown("<h2 style='text-align: center;'>Past Tests</h2>", unsafe_allow_html=True)
 
   if past_test_data.empty:
-            st.markdown("<h2 style='text-align: center;'>No Current Tests to Display</h2>", unsafe_allow_html=True)
+            st.markdown("<h4 style='text-align: center;'>No Past Tests to Display</h4>", unsafe_allow_html=True)
   else:
             past_tests = past_test_data['Ad_Set']
           
