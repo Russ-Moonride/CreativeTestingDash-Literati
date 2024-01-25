@@ -267,6 +267,13 @@ def process_ad_set_data(data, ad_set, past_test_data):
   
     final_df.reset_index(drop=True, inplace=True)
 
+    final_df['Cost'] = final_df['Cost'].fillna(0)
+    final_df['CAC'] = final_df['CAC'].fillna(0)
+    final_df['CPC'] = final_df['CPC'].fillna(0)
+    final_df['CPM'] = final_df['CPM'].fillna(0)
+    final_df['CTR'] = final_df['CTR'].fillna(0)
+    final_df['CVR'] = final_df['CVR'].fillna(0)      
+
     #Format final_df correctly
     final_df['Cost'] = round(final_df['Cost'], 0).astype(int)
     final_df['Cost'] = final_df['Cost'].apply(lambda x: f"${x}")
@@ -518,7 +525,13 @@ def main_dashboard():
             uploaded_images = []
             image_captions = []
           
-          
+            final_df['Cost'] = final_df['Cost'].fillna(0)
+            final_df['CAC'] = final_df['CAC'].fillna(0)
+            final_df['CPC'] = final_df['CPC'].fillna(0)
+            final_df['CPM'] = final_df['CPM'].fillna(0)
+            final_df['CTR'] = final_df['CTR'].fillna(0)
+            final_df['CVR'] = final_df['CVR'].fillna(0)
+            
             #Format final_df correctly
             final_df['Cost'] = round(final_df['Cost'], 0).astype(int)
             final_df['Cost'] = final_df['Cost'].apply(lambda x: f"${x}")
