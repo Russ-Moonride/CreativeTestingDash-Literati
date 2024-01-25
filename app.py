@@ -271,6 +271,8 @@ def process_ad_set_data(data, ad_set, past_test_data):
   
     final_df.reset_index(drop=True, inplace=True)
 
+    final_df = final_df.apply(adjust_cac, axis=1)
+          
     final_df['Cost'] = final_df['Cost'].fillna(0)
     final_df['CAC'] = final_df['CAC'].fillna(0)
     final_df['CPC'] = final_df['CPC'].fillna(0)
