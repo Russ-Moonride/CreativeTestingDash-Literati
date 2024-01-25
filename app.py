@@ -527,6 +527,7 @@ def main_dashboard():
           
             final_df['Cost'] = final_df['Cost'].fillna(0)
             final_df['CAC'] = final_df['CAC'].fillna(0)
+            final_df['CAC'] = final_df['CAC'].replace('', 0)
             final_df['CPC'] = final_df['CPC'].fillna(0)
             final_df['CPM'] = final_df['CPM'].fillna(0)
             final_df['CTR'] = final_df['CTR'].fillna(0)
