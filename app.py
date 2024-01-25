@@ -175,6 +175,10 @@ def delete_ad_set(ad_set_value_to_delete, full_data):
         else:
                   st.error("Ad_Set does not exist")
 
+def adjust_cac(row):
+    if row['Purchases'] == 0:
+        row['CAC'] = 0
+    return row
 
 ### Code for past tests function ###
 def process_ad_set_data(data, ad_set, past_test_data):
@@ -525,7 +529,9 @@ def main_dashboard():
           
             uploaded_images = []
             image_captions = []
-          
+
+            final_df = final_df.apply(adjust_cac, axis=1)
+            
             final_df['Cost'] = final_df['Cost'].fillna(0)
             final_df['CAC'] = final_df['CAC'].fillna(0)
             final_df['CAC'] = final_df['CAC'].replace('', 0)
