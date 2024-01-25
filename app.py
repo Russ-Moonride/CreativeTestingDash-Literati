@@ -321,7 +321,6 @@ def get_ad_names(ad_set_name, ad_data):
 def display_images(images, captions):
     num_images = len(images)
     cols = st.columns(num_images + 2)  # Extra columns for white space
-    bucket_name = "creativetesting_images"
 
     # Display images in the center columns
     for idx, image_name in enumerate(images):
