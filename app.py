@@ -426,9 +426,9 @@ def main_dashboard():
               if all_images_uploaded and st.button("Update Ad Set and Upload Images"):
                   update_ad_set_if_exists(new_ad_set_name, uploaded_images, st.session_state.full_data, bucket_name, campaign_name)
 
-    if current_test_data.empty:
+  if current_test_data.empty:
             st.markdown("<h2 style='text-align: center;'>No Current Tests to Display</h2>", unsafe_allow_html=True)
-    else:   
+  else:   
             current_Ad_Set = current_test_data['Ad_Set'].iloc[0]
           
             current_Ad_Set = current_Ad_Set.strip("'")
