@@ -550,7 +550,7 @@ def main_dashboard():
                     
             st.markdown("<h2 style='text-align: center;'>Past Tests</h2>", unsafe_allow_html=True)
 
-  if past_tests.empty:
+  if past_test_data.empty:
             st.markdown("<h2 style='text-align: center;'>No Current Tests to Display</h2>", unsafe_allow_html=True)
   else:
             past_tests = past_test_data['Ad_Set']
