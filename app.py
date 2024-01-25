@@ -541,8 +541,6 @@ def main_dashboard():
             final_df['CPM'] = final_df['CPM'].fillna(0)
             final_df['CTR'] = final_df['CTR'].fillna(0)
             final_df['CVR'] = final_df['CVR'].fillna(0)
-
-            st.write(final_df)
             
             #Format final_df correctly
             final_df['Cost'] = round(final_df['Cost'], 0).astype(int)
