@@ -369,6 +369,7 @@ def main_dashboard():
       st.session_state.current_test_data = pandas.read_gbq(query, credentials=credentials)
 
   current_test_data = st.session_state.current_test_data
+  current_test_data.fillna(0, inplace=True)
 
   if 'past_test_data' not in st.session_state:
       credentials = service_account.Credentials.from_service_account_info(
