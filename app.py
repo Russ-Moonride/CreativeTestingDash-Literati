@@ -14,14 +14,20 @@ import requests
 import json
 from google.cloud import storage
 
-st.set_page_config(page_title="Literati Creative Ad Testing Dash",page_icon="🧑‍🚀",layout="wide")
-
 credentials = service_account.Credentials.from_service_account_info(
           st.secrets["gcp_service_account"]
       )
 client = bigquery.Client(credentials=credentials)
-bucket_name = "creativetesting_images_literati"
 
+#### Information to be changed when switching accounts ###
+Account = "Literati"
+bucket_name = "creativetesting_images_literati" 
+main_table_id = "literati-412221.literati_segments.literati_facebook_ad_level"
+creativetesting_table_id = "literati-412221.literati_streamlit.CreativeTestingStorage"
+correct_hashed_password = "CFLiteratiAdTest1689$"
+
+
+st.set_page_config(page_title= f"{Account} Creative Ad Testing Dash",page_icon="🧑‍🚀",layout="wide")
 
 def initialize_storage_client():
     credentials = service_account.Credentials.from_service_account_info(
@@ -40,7 +46,6 @@ def password_protection():
       
   if not st.session_state.authenticated:
       password = st.text_input("Enter Password:", type="password")
-      correct_hashed_password = "CFLiteratiAdTest1689$"
       
       if st.button("Login"):
           if password == correct_hashed_password:
@@ -97,14 +102,14 @@ def get_campaign_value(ad_set, creative_storage_data):
 def update_ad_set_table(new_ad_set_name, campaign_name=None):
     # Query to find the current Ad-Set and Campaign
     query = """
-    SELECT Ad_Set, Campaign FROM `literati-412221.literati_streamlit.CreativeTestingStorage` WHERE Type = 'Current'
+    SELECT Ad_Set, Campaign FROM `{creativetesting_table_id}` WHERE Type = 'Current'
     """
     current_ad_set_campaign = pandas.read_gbq(query, credentials=credentials)
 
     # If current Ad-Set exists, update it to 'Past'
     if not current_ad_set_campaign.empty:
         update_query = """
-        UPDATE `literati-412221.literati_streamlit.CreativeTestingStorage`
+        UPDATE `{creativetesting_table_id}`
         SET Type = 'Past'
         WHERE Ad_Set = @current_ad_set 
         """
@@ -118,7 +123,7 @@ def update_ad_set_table(new_ad_set_name, campaign_name=None):
 
     # Insert the new Ad-Set with Type 'Current'
     insert_query = """
-    INSERT INTO `literati-412221.literati_streamlit.CreativeTestingStorage` (Ad_Set, Campaign, Type) VALUES (@new_ad_set, @campaign, 'Current')
+    INSERT INTO `{creativetesting_table_id}` (Ad_Set, Campaign, Type) VALUES (@new_ad_set, @campaign, 'Current')
     """
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
@@ -135,7 +140,7 @@ def update_ad_set_if_exists(new_ad_set_name, uploaded_images, full_data, bucket_
     # So, we directly proceed with uploading files and updating the ad set table
 
     for ad_name, uploaded_file in uploaded_images.items():
-        destination_blob_name = f"{ad_name}" 
+        destination_blob_name = f"{ad_name}.jpg" 
         upload_to_gcs(bucket_name, uploaded_file, destination_blob_name)
     
     update_ad_set_table(new_ad_set_name, campaign_name)  # Update the ad set table after successful uploads
@@ -159,7 +164,7 @@ def delete_ad_set(ad_set_value_to_delete, full_data):
         # SQL statement for deletion
         if ad_set_value_to_delete in full_data['Ad_Set_Name__Facebook_Ads'].values:
                   delete_query = """
-                  DELETE FROM `literati-412221.literati_streamlit.CreativeTestingStorage`
+                  DELETE FROM `{creativetesting_table_id}`
                   WHERE Ad_Set = @ad_set_value
                   AND Type = 'Past'
                   """
@@ -175,10 +180,6 @@ def delete_ad_set(ad_set_value_to_delete, full_data):
         else:
                   st.error("Ad_Set does not exist")
 
-def adjust_cac(row):
-    if row['Purchases'] == 0:
-        row['CAC'] = 0
-    return row
 
 ### Code for past tests function ###
 def process_ad_set_data(data, ad_set, past_test_data):
@@ -188,10 +189,12 @@ def process_ad_set_data(data, ad_set, past_test_data):
       'Campaign_Name__Facebook_Ads': 'Campaign',
       'Ad_Set_Name__Facebook_Ads': 'Ad_Set',
       'Ad_Name__Facebook_Ads' : 'Ad_Name',
-      'Impressions' : 'Impressions',
-      'Clicks' : 'Clicks',
-      'Cost' : 'Cost',
-      'Conversions_3' : 'Purchases'
+      'Impressions__Facebook_Ads' : 'Impressions',
+      'Link_Clicks__Facebook_Ads' : 'Clicks',
+      'Amount_Spent__Facebook_Ads' : 'Cost',
+      'Lead_Submit_SunPower__Facebook_Ads' : 'Leads',
+      'Ad_Effective_Status__Facebook_Ads' : 'Ad_Status',
+      'Ad_Preview_Shareable_Link__Facebook_Ads' : 'Ad_Link'
     })
 
     campaign_value = get_campaign_value(ad_set, past_test_data)
@@ -207,7 +210,7 @@ def process_ad_set_data(data, ad_set, past_test_data):
     #ad_set_data = data[data['Ad_Set'] == ad_set]
 
     # Your data processing steps
-    selected_columns = ['Ad_Set', 'Ad_Name', 'Impressions', 'Clicks', 'Cost', 'Purchases']
+    selected_columns = ['Ad_Set', 'Ad_Name', 'Impressions', 'Clicks', 'Cost', 'Leads']
     filtered_data = ad_set_data[selected_columns]
     grouped_data = filtered_data.groupby(['Ad_Set', 'Ad_Name']).sum()
     aggregated_data = grouped_data.reset_index()
@@ -216,8 +219,8 @@ def process_ad_set_data(data, ad_set, past_test_data):
     total['CPC'] = total['Cost']/total['Clicks']
     total['CPM'] = (total['Cost']/total['Impressions'])*1000
     total['CTR'] = total['Clicks']/total['Impressions']
-    total['CVR'] = total['Purchases']/total['Clicks']
-    total['CAC'] = total['Cost']/total['Purchases']
+    total['CVR'] = total['Leads']/total['Clicks']
+    total['CPL'] = total['Cost']/total['Leads']
     total['Ad_Name'] = ""
     total['Ad_Set'] = 'Total'
   
@@ -225,15 +228,15 @@ def process_ad_set_data(data, ad_set, past_test_data):
     aggregated_data['CPC'] = aggregated_data['Cost']/aggregated_data['Clicks']
     aggregated_data['CPM'] = (aggregated_data['Cost']/aggregated_data['Impressions'])*1000
     aggregated_data['CTR'] = aggregated_data['Clicks']/aggregated_data['Impressions']
-    aggregated_data['CVR'] = aggregated_data['Purchases']/aggregated_data['Clicks']
-    aggregated_data['CAC'] = aggregated_data['Cost']/aggregated_data['Purchases']
+    aggregated_data['CVR'] = aggregated_data['Leads']/aggregated_data['Clicks']
+    aggregated_data['CPL'] = aggregated_data['Cost']/aggregated_data['Leads']
 
-    #Sort Purchases so highest performer is at the top
-    aggregated_data.sort_values(by='Purchases', ascending=False, inplace=True)
+    #Sort leads so highest performer is at the top
+    aggregated_data.sort_values(by='Leads', ascending=False, inplace=True)
   
     total_df = pd.DataFrame([total])
     # Reorder columns in total_df to match aggregated_data
-    total_df = total_df[['Ad_Set', 'Ad_Name', 'Impressions', 'Clicks', 'Cost', 'Purchases', 'CAC', 'CPC', 'CPM', 'CTR', 'CVR']]
+    total_df = total_df[['Ad_Set', 'Ad_Name', 'Impressions', 'Clicks', 'Cost', 'Leads', 'CPL', 'CPC', 'CPM', 'CTR', 'CVR']]
 
     # Concatenate aggregated_data with total_df
     final_df = pd.concat([aggregated_data, total_df])
@@ -242,18 +245,18 @@ def process_ad_set_data(data, ad_set, past_test_data):
     significance_results = []
   
     # Top row data for comparison
-    top_ad_purchases = final_df.iloc[0]['Purchases']
+    top_ad_leads = final_df.iloc[0]['Leads']
     top_ad_impressions = final_df.iloc[0]['Impressions']
   
     # Iterate through each row except the first and last
     for index, row in final_df.iloc[1:-1].iterrows():
-        variant_purchases = row['Purchases']
+        variant_leads = row['Leads']
         variant_impressions = row['Impressions']
   
         # Chi-square test
         chi2, p_value, _, _ = chi2_contingency([
-            [top_ad_purchases, top_ad_impressions - top_ad_purchases],
-            [variant_purchases, variant_impressions - variant_purchases]
+            [top_ad_leads, top_ad_impressions - top_ad_leads],
+            [variant_leads, variant_impressions - variant_leads]
         ])
   
         # Check if the result is significant and store the result
@@ -266,27 +269,18 @@ def process_ad_set_data(data, ad_set, past_test_data):
     # Add the significance results to the DataFrame
     final_df['Significance'] = significance_results
 
-    column_order = ['Ad_Set', 'Ad_Name', 'Cost', 'CPM', 'Clicks', 'CPC', 'CTR', 'Purchases', 'CAC', 'CVR', 'Significance']
+    column_order = ['Ad_Set', 'Ad_Name', 'Cost', 'CPM', 'Clicks', 'CPC', 'CTR', 'Leads', 'CPL', 'CVR', 'Significance']
     final_df = final_df[column_order]
   
     final_df.reset_index(drop=True, inplace=True)
-
-    final_df = final_df.apply(adjust_cac, axis=1)
-          
-    final_df['Cost'] = final_df['Cost'].fillna(0)
-    final_df['CAC'] = final_df['CAC'].fillna(0)
-    final_df['CPC'] = final_df['CPC'].fillna(0)
-    final_df['CPM'] = final_df['CPM'].fillna(0)
-    final_df['CTR'] = final_df['CTR'].fillna(0)
-    final_df['CVR'] = final_df['CVR'].fillna(0)      
 
     #Format final_df correctly
     final_df['Cost'] = round(final_df['Cost'], 0).astype(int)
     final_df['Cost'] = final_df['Cost'].apply(lambda x: f"${x}")
 
-    final_df['CAC'] = round(final_df['CAC'], 0).astype(int)
-    #final_df['CAC'] = final_df['CAC'].apply(lambda x: f"${x}")
-    final_df['CAC'] = final_df['CAC'].apply(lambda x: '' if abs(x) > 10000 else f"${x}")
+    final_df['CPL'] = round(final_df['CPL'], 0).astype(int)
+    #final_df['CPL'] = final_df['CPL'].apply(lambda x: f"${x}")
+    final_df['CPL'] = final_df['CPL'].apply(lambda x: '' if abs(x) > 10000 else f"${x}")
 
     final_df['CPC'] = round(final_df['CPC'], 2)
     final_df['CPC'] = final_df['CPC'].apply(lambda x: f"${x}")
@@ -297,6 +291,10 @@ def process_ad_set_data(data, ad_set, past_test_data):
     final_df['CTR'] = final_df['CTR'].apply(lambda x: f"{x*100:.2f}%")
     final_df['CVR'] = final_df['CVR'].apply(lambda x: f"{x*100:.2f}%")
 
+
+    final_df = final_df[final_df['Ad_Name'] != "specimen-v13_image_paid-social-LP_PID"]
+    final_df = final_df[final_df['Ad_Name'] != "specimen-v7_image_paid-social-LP_PID"]      
+          
     return final_df
 
 
@@ -345,7 +343,7 @@ def display_images(images, captions):
 
 
 def main_dashboard():
-  st.markdown("<h1 style='text-align: center;'>Literati Creative Ad Testing</h1>", unsafe_allow_html=True)
+  st.markdown(f"<h1 style='text-align: center;'>{Account} Creative Ad Testing</h1>", unsafe_allow_html=True)
   st.markdown("<h2 style='text-align: center;'>Current Test</h2>", unsafe_allow_html=True)
   # Calculate the date one year ago from today
   one_year_ago = (datetime.now() - timedelta(days=365)).date()
@@ -357,8 +355,9 @@ def main_dashboard():
       client = bigquery.Client(credentials=credentials)
       # Modify the query
       query = f"""
-      SELECT * FROM `literati-412221.literati_segments.literati_facebook_ad_level` 
+      SELECT * FROM `{main_table_id}` 
       WHERE Date BETWEEN '{one_year_ago}' AND CURRENT_DATE() """
+      
       st.session_state.full_data = pandas.read_gbq(query, credentials=credentials)
 
   data = st.session_state.full_data
@@ -370,12 +369,11 @@ def main_dashboard():
       client = bigquery.Client(credentials=credentials)
       # Modify the query
       query = f"""
-      SELECT * FROM `literati-412221.literati_streamlit.CreativeTestingStorage` 
+      SELECT * FROM `{creativetesting_table_id}` 
       WHERE Type = 'Current'"""
       st.session_state.current_test_data = pandas.read_gbq(query, credentials=credentials)
 
   current_test_data = st.session_state.current_test_data
-  current_test_data.fillna(0, inplace=True)
 
   if 'past_test_data' not in st.session_state:
       credentials = service_account.Credentials.from_service_account_info(
@@ -384,7 +382,7 @@ def main_dashboard():
       client = bigquery.Client(credentials=credentials)
       # Modify the query
       query = f"""
-      SELECT * FROM `literati-412221.literati_streamlit.CreativeTestingStorage` 
+      SELECT * FROM `{creativetesting_table_id}` 
       WHERE Type = 'Past'"""
       st.session_state.past_test_data = pandas.read_gbq(query, credentials=credentials)
 
@@ -397,10 +395,12 @@ def main_dashboard():
       'Campaign_Name__Facebook_Ads': 'Campaign',
       'Ad_Set_Name__Facebook_Ads': 'Ad_Set',
       'Ad_Name__Facebook_Ads' : 'Ad_Name',
-      'Impressions' : 'Impressions',
-      'Clicks' : 'Clicks',
-      'Cost' : 'Cost',
-      'Conversions_3' : 'Purchases'
+      'Impressions__Facebook_Ads' : 'Impressions',
+      'Link_Clicks__Facebook_Ads' : 'Clicks',
+      'Amount_Spent__Facebook_Ads' : 'Cost',
+      'Lead_Submit_SunPower__Facebook_Ads' : 'Leads',
+      'Ad_Effective_Status__Facebook_Ads' : 'Ad_Status',
+      'Ad_Preview_Shareable_Link__Facebook_Ads' : 'Ad_Link'
   })
 
 
@@ -441,7 +441,7 @@ def main_dashboard():
 
   if current_test_data.empty:
             st.markdown("<h4 style='text-align: center;'>No Current Tests to Display</h4>", unsafe_allow_html=True)
-  else:   
+  else:              
             current_Ad_Set = current_test_data['Ad_Set'].iloc[0]
           
             current_Ad_Set = current_Ad_Set.strip("'")
@@ -457,7 +457,7 @@ def main_dashboard():
                     
             data = ad_set_data
                     
-            selected_columns = ['Ad_Set', 'Ad_Name', 'Impressions', 'Clicks','Cost', 'Purchases']
+            selected_columns = ['Ad_Set', 'Ad_Name', 'Impressions', 'Clicks','Cost', 'Leads']
             filtered_data = data[selected_columns]
           
             # Grouping the data by 'Ad_Set'
@@ -473,8 +473,8 @@ def main_dashboard():
             total['CPC'] = total['Cost']/total['Clicks']
             total['CPM'] = (total['Cost']/total['Impressions'])*1000
             total['CTR'] = total['Clicks']/total['Impressions']
-            total['CVR'] = total['Purchases']/total['Clicks']
-            total['CAC'] = total['Cost']/total['Purchases']
+            total['CVR'] = total['Leads']/total['Clicks']
+            total['CPL'] = total['Cost']/total['Leads']
             total['Ad_Name'] = ""
             total['Ad_Set'] = 'Total'
             
@@ -482,15 +482,15 @@ def main_dashboard():
             aggregated_data['CPC'] = aggregated_data['Cost']/aggregated_data['Clicks']
             aggregated_data['CPM'] = (aggregated_data['Cost']/aggregated_data['Impressions'])*1000
             aggregated_data['CTR'] = aggregated_data['Clicks']/aggregated_data['Impressions']
-            aggregated_data['CVR'] = aggregated_data['Purchases']/aggregated_data['Clicks']
-            aggregated_data['CAC'] = aggregated_data['Cost']/aggregated_data['Purchases']
+            aggregated_data['CVR'] = aggregated_data['Leads']/aggregated_data['Clicks']
+            aggregated_data['CPL'] = aggregated_data['Cost']/aggregated_data['Leads']
           
-            #Sort Purchases so highest performer is at the top
-            aggregated_data.sort_values(by='Purchases', ascending=False, inplace=True)
+            #Sort leads so highest performer is at the top
+            aggregated_data.sort_values(by='Leads', ascending=False, inplace=True)
             
             total_df = pd.DataFrame([total])
             # Reorder columns in total_df to match aggregated_data
-            total_df = total_df[['Ad_Set', 'Ad_Name', 'Impressions', 'Clicks', 'Cost', 'Purchases', 'CAC', 'CPC', 'CPM', 'CTR', 'CVR']]
+            total_df = total_df[['Ad_Set', 'Ad_Name', 'Impressions', 'Clicks', 'Cost', 'Leads', 'CPL', 'CPC', 'CPM', 'CTR', 'CVR']]
           
             # Concatenate aggregated_data with total_df
             final_df = pd.concat([aggregated_data, total_df])
@@ -500,18 +500,18 @@ def main_dashboard():
             significance_results = []
             
             # Top row data for comparison
-            top_ad_purchases = final_df.iloc[0]['Purchases']
+            top_ad_leads = final_df.iloc[0]['Leads']
             top_ad_impressions = final_df.iloc[0]['Impressions']
             
             # Iterate through each row except the first and last
             for index, row in final_df.iloc[1:-1].iterrows():
-                variant_purchases = row['Purchases']
+                variant_leads = row['Leads']
                 variant_impressions = row['Impressions']
             
                 # Chi-square test
                 chi2, p_value, _, _ = chi2_contingency([
-                    [top_ad_purchases, top_ad_impressions - top_ad_purchases],
-                    [variant_purchases, variant_impressions - variant_purchases]
+                    [top_ad_leads, top_ad_impressions - top_ad_leads],
+                    [variant_leads, variant_impressions - variant_leads]
                 ])
             
                 # Check if the result is significant and store the result
@@ -524,31 +524,22 @@ def main_dashboard():
             # Add the significance results to the DataFrame
             final_df['Significance'] = significance_results
           
-            column_order = ['Ad_Set', 'Ad_Name', 'Cost', 'CPM', 'Clicks', 'CPC', 'CTR', 'Purchases', 'CAC', 'CVR', 'Significance']
+            column_order = ['Ad_Set', 'Ad_Name', 'Cost', 'CPM', 'Clicks', 'CPC', 'CTR', 'Leads', 'CPL', 'CVR', 'Significance']
             final_df = final_df[column_order]
           
             final_df.reset_index(drop=True, inplace=True)
           
             uploaded_images = []
             image_captions = []
-
-            final_df = final_df.apply(adjust_cac, axis=1)
-            
-            final_df['Cost'] = final_df['Cost'].fillna(0)
-            final_df['CAC'] = final_df['CAC'].fillna(0)
-            final_df['CAC'] = final_df['CAC'].replace('', 0)
-            final_df['CPC'] = final_df['CPC'].fillna(0)
-            final_df['CPM'] = final_df['CPM'].fillna(0)
-            final_df['CTR'] = final_df['CTR'].fillna(0)
-            final_df['CVR'] = final_df['CVR'].fillna(0)
-            
+          
+          
             #Format final_df correctly
             final_df['Cost'] = round(final_df['Cost'], 0).astype(int)
             final_df['Cost'] = final_df['Cost'].apply(lambda x: f"${x}")
           
-            final_df['CAC'] = round(final_df['CAC'], 0).astype(int)
-            #final_df['CAC'] = final_df['CAC'].apply(lambda x: f"${x}")
-            final_df['CAC'] = final_df['CAC'].apply(lambda x: '' if abs(x) > 10000 else f"${x}")
+            final_df['CPL'] = round(final_df['CPL'], 0).astype(int)
+            #final_df['CPL'] = final_df['CPL'].apply(lambda x: f"${x}")
+            final_df['CPL'] = final_df['CPL'].apply(lambda x: '' if abs(x) > 10000 else f"${x}")
           
             final_df['CPC'] = round(final_df['CPC'], 2)
             final_df['CPC'] = final_df['CPC'].apply(lambda x: f"${x}")
@@ -569,21 +560,17 @@ def main_dashboard():
             final_adnames.pop()
             
             display_images(final_adnames, final_adnames)        
-                    
+          
   st.markdown("<h2 style='text-align: center;'>Past Tests</h2>", unsafe_allow_html=True)
 
   if past_test_data.empty:
             st.markdown("<h4 style='text-align: center;'>No Past Tests to Display</h4>", unsafe_allow_html=True)
-  else:
+  else:        
             past_tests = past_test_data['Ad_Set']
           
             # Dictionary to store DataFrames for each ad set
             ad_set_dfs = {}
-          
-            #remove_ad_set = st.text_input("Enter Past Ad Set Name to remove")
-            #if st.button("Remove Ad Set"):
-            #        delete_ad_set(remove_ad_set, st.session_state.full_data)
-                
+            
             for ad_set in past_tests:
                 ad_set_dfs[ad_set] = process_ad_set_data(st.session_state.full_data, ad_set, past_test_data)
           
@@ -598,5 +585,3 @@ def main_dashboard():
 
 if __name__ == '__main__':
     password_protection()
-
-    
